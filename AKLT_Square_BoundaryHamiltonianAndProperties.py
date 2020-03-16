@@ -1030,11 +1030,11 @@ def ComputeSigmaDotSigma(i, j, N_x, sX, sY, sZ):
     return SigmaDotSigma
 
 
-def Compute_A_rs(H, N_x):
+def Compute_A_r(H, N_x):
     # Computes amplitudes A_r of Hamiltonian H
 
     Z = np.array([[1, 0], [0, -1]])
-    A_rs = np.zeros((N_x, 1), dtype=np.complex)
+    A_r = np.zeros((N_x, 1), dtype=np.complex)
     # A_0 = np.trace(H) / (N_x * 2 ** N_x)
     # X_squared = np.trace(H.dot(H))/(N_x*2**N_x)-A_0**2*10-3/16*(A_rs[1]**2+A_rs[2]**2+A_rs[3]**2+A_rs[4]**2+A_rs[5]**2)
     for r in range(0, N_x):
@@ -1042,143 +1042,32 @@ def Compute_A_rs(H, N_x):
             Z_k = np.kron(np.kron(np.identity(2 ** (k - 1)), Z), np.identity(2 ** (N_x - k)))
             Z_kPlusr = np.kron(np.kron(np.identity(2 ** (np.mod(k + r - 1, N_x) + 1 - 1)), Z),
                                np.identity(2 ** (N_x - np.mod(k + r - 1, N_x) - 1)))
-            A_rs[r, 0] += 1 / (N_x * 3 * 2 ** N_x) * np.trace(np.dot(np.dot(H, Z_k), Z_kPlusr))
+            A_r[r, 0] += 1 / (N_x * 3 * 2 ** N_x) * np.trace(np.dot(np.dot(H, Z_k), Z_kPlusr))
 
-    return A_rs[:, 0]
-
-
-def Compute_d_ns(H, N_x):
-    # Computes a measure of interaction size d_n of Hamiltonian H
-
-    Z = np.array([[1, 0], [0, -1]])
-    d_ns = np.zeros((N_x + 1, 1), dtype=np.complex)
-
-    op = np.identity(2 ** N_x)
-    d_ns[0, 0] = (np.trace(H) ** 2 / 2 ** N_x)
-    # d_ns[0, 0] = (np.trace(H.dot(H)) / 2 ** N_x)
-    for n in range(1, N_x + 1):
-        Z_n = np.kron(np.kron(np.identity(2 ** (n - 1)), Z), np.identity(2 ** (N_x - n)))
-        op = np.dot(op, Z_n)
-        if n == N_x:
-            d_ns[n, 0] += (np.trace(np.dot(H, op)) ** 2 / (2 ** N_x))
-        else:
-            d_ns[n, 0] += N_x * (np.trace(np.dot(H, op)) ** 2 / (2 ** N_x))
-        # d_ns[n, 0] += (N_x-n+1)*(np.trace(np.dot(H, op))**2/(2**N_x))
-        # d_ns[n, 0] += (N_x-n+1)*(np.trace(np.dot(H, op).dot(np.dot(H, op))) / (2 ** N_x))
-
-    return d_ns[:, 0]
+    return A_r[:, 0]
 
 
-def Compute_d_ns_sigsig(H, N_x, sX, sY, sZ):
-    # Computes a measure of interaction size d_n of Hamiltonian H
+def Compute_d_n(H, N_x, sX, sY, sZ):
+    # Computes n-qubit interaction strengths d_n of Hamiltonian H (assumed to be sparse)
 
-    d_ns = np.zeros((int(N_x / 2) + 1, 1), dtype=np.complex)
-
-    op = np.identity(2 ** N_x)
-    d_ns[0, 0] = (np.trace(H) ** 2 / 2 ** N_x)
-    for n in range(1, int(N_x / 2) + 1):
-        op = np.dot(op, ComputeSigmaDotSigma(2 * n - 1, 2 * n, N_x, sX, sY, sZ).toarray())
-        d_ns[n, 0] += (np.trace(np.dot(H, op)) ** 2 / (2 ** N_x))
-
-    return d_ns[:, 0]
-
-
-def Compute_d_ns_noncontiguous(H, N_x):
-    # Computes a measure of interaction size d_n of Hamiltonian H
-
-    Z = np.array([[1, 0], [0, -1]])
-    d_ns = np.zeros(N_x + 1).astype(complex)
-    # d_ns[0] = np.real(np.trace(H)**2/2**N_x)
-    d_ns[0] = (np.trace(H) ** 2 / 2 ** N_x)
-    for n in range(1, N_x + 1):
-        combs = np.reshape(list(combinations(range(1, N_x + 1), n)), (-1, n))
-        for comb in combs:
-            op = np.identity(2 ** N_x)
-            for k in comb:
-                op = np.dot(op, np.kron(np.kron(np.identity(2 ** (k - 1)), Z), np.identity(2 ** (N_x - k))))
-            # d_ns[n] += np.real(np.trace(np.dot(H, op))**2/(2**N_x))
-            d_ns[n] += (np.trace(np.dot(H, op)) ** 2 / (2 ** N_x))
-
-    return d_ns
-
-
-def Compute_d_ns_noncontiguous_sigsig(H, N_x, sX, sY, sZ):
-    # Computes a measure of interaction size d_n of Hamiltonian H
-
-    d_ns = np.zeros(int(N_x / 2) + 1).astype(complex)
-    d_ns[0] = (np.trace(H) ** 2 / 2 ** N_x)
-
-    for n in range(2, N_x + 1, 2):
-        strings = int(n / 2)
-        for conjugacy_class in range(int(np.max(ConjugacyClasses[strings]) + 1)):
-            print(conjugacy_class)
-            StringConfig = AllStringConfigs[strings][np.where(ConjugacyClasses[strings] == conjugacy_class)[0][0]]
-            op = np.identity(2 ** N_x)
-            for i in range(0, len(StringConfig), 2):
-                op = op.dot(
-                    ComputeSigmaDotSigma(StringConfig[i] + 1, StringConfig[i + 1] + 1, N_x, sX, sY, sZ).toarray())
-            d_ns[int(n / 2)] += (np.trace(np.dot(H, op)) ** 2 / (2 ** N_x)) * \
-                                list(ConjugacyClasses[strings]).count(conjugacy_class)
-
-    return d_ns
-
-
-def Compute_d_ns_sigsig2(H, N_x, sX, sY, sZ):
-    # Computes a measure of interaction size d_n of Hamiltonian H
-
-    d_ns = np.zeros((int(N_x / 2) + 1, 1), dtype=np.complex)
-
+    d_n = np.zeros((N_x + 1, 1), dtype=np.complex)
     h = (H.diagonal()).sum() / 2 ** N_x * sparse.identity(2 ** N_x)
-    d_ns[0, 0] = ((h * h).diagonal()).sum()
-    for strings in range(1, int(N_x/2) + 1):
+    d_n[0, 0] = ((h * h).diagonal()).sum()
+
+    for n in range(1, N_x+1):
+        print('n: ' + str(n))
         h = sparse.csr_matrix((2 ** N_x, 2 ** N_x))
-        for nodes in list(ComputeStringConfigs(2 * strings, strings)): #USE SYMMETRY TO NOT EVALUATE ALL OF THESE
-            op = ComputeInteraction(np.array(nodes).reshape(strings, 2), N_x, sX, sY, sZ)
-            h = h + op * ((H * op).diagonal()).sum() / 2 ** N_x
-        d_ns[strings, 0] = ((h * h).diagonal()).sum()
-
-    return d_ns[:, 0]
-
-
-def Compute_d_ns_sigsig3(H, N_x, sX, sY, sZ):
-    # Computes interaction distance d_n of Hamiltonian H
-
-    d_ns = np.zeros((int(N_x / 2) + 1, 1), dtype=np.complex)
-
-    d_ns[0, 0] = (H.diagonal()).sum() ** 2
-    for strings in range(1, int(N_x / 2) + 1):
-        size = len(list(ComputeStringConfigs(2 * strings, strings)))
-        for nodes in list(ComputeStringConfigs(2 * strings, strings)):
-            op = ComputeInteraction(np.array(nodes).reshape(strings, 2), N_x, sX, sY, sZ)
-            d_ns[strings, 0] += ((H * op).diagonal()).sum() ** 2 / size
+        for strings in range(1, int(n/2)+1):
+            for nodes in list(ComputeStringConfigs(n, strings)):
+                if (0 in nodes) and (n-1 in nodes):
+                    # Uses orthogonality of Pauli operators to determine contribution to h
+                    op = ComputeInteraction(np.array(nodes).reshape(strings, 2), N_x, sX, sY, sZ)
+                    h = h + op * ((H * op).diagonal()).sum() / (3 ** strings * 2 ** N_x)
+        h = h * N_x       # Interaction can begin at any of the N_x qubits
+        d_n[n, 0] = ((h * h).diagonal()).sum()
 
 
-
-    return d_ns[:, 0]
-
-
-def ComputeAll_d_ns(H, N_x, sX, sY, sZ):
-    # Computes interaction distances d_n of Hamiltonian H (assumed to be sparse)
-
-    d_ns_h = np.zeros((int(N_x / 2) + 1, 1), dtype=np.complex)
-    d_ns_sigsig_avg = np.zeros((int(N_x / 2) + 1, 1), dtype=np.complex)
-
-    h = (H.diagonal()).sum() / 2 ** N_x * sparse.identity(2 ** N_x)
-    d_ns_h[0, 0] = ((h * h).diagonal()).sum()
-    d_ns_sigsig_avg[0, 0] = (H.diagonal()).sum()**2
-
-    for strings in range(1, int(N_x/2) + 1):
-        print('Strings: ' + str(strings))
-        h = sparse.csr_matrix((2 ** N_x, 2 ** N_x))
-        size = len(list(ComputeStringConfigs(2 * strings, strings)))
-        for nodes in list(ComputeStringConfigs(2 * strings, strings)):
-            op = ComputeInteraction(np.array(nodes).reshape(strings, 2), N_x, sX, sY, sZ)
-            h = h + op * ((H * op).diagonal()).sum() / (3**(int(strings/2)) * 2 ** N_x)
-            d_ns_sigsig_avg[strings, 0] += ((H * op).diagonal()).sum() ** 2 / size
-        d_ns_h[strings, 0] = ((h * h).diagonal()).sum()
-
-
-    return d_ns_h[:, 0], d_ns_sigsig_avg[:, 0]
+    return d_n[:, 0]
 
 
 def Compute_TwoPointFunctions(rho, N_x):
@@ -1252,7 +1141,7 @@ if __name__ == '__main__':
     samples = 30                    # Maximum number of samples (loop configurations) evaluated
     epochs = 2                      # Number of epochs (iteration over noncontractible loop rungs)
     iterations = epochs*(N_y+1)     # Total number of iterations over which coefficients are averaged
-    comb_method = 2                 # Method used to construct combinations that are analyzed
+    comb_method = 2                 # Method used to construct combinations of face flips that are analyzed
     range_samples = 50              # Number of samples used to determine n_range
     deg4_samples = 15               # Maximum number of deg4 configs sampled over
     max_strings = int(N_x/2)        # Max number of strings analyzed; an integer >=1 and <= int(N_x/2)
@@ -1623,18 +1512,12 @@ if __name__ == '__main__':
     # Determines properties of boundary Hamiltonian
     print('Determining Hamiltonian Properties')
     TwoPointFunctions = Compute_TwoPointFunctions(rho, N_x)     # Two point functions
-    A_rs = Compute_A_rs(H, N_x)                                 # Heisenberg amplitudes
-    # Various measures of the interaction size
-    d_ns_Z = Compute_d_ns(H, N_x)
-    d_ns_h, d_ns_sigsig_avg = ComputeAll_d_ns(sparse.csr_matrix(H), N_x, sX, sY, sZ)
-    d_ns_sigsig = Compute_d_ns_sigsig(H, N_x, sX, sY, sZ)
+    A_r = Compute_A_r(H, N_x)                                   # Heisenberg amplitudes
+    d_n = Compute_d_n(H, N_x, sX, sY, sZ)                       # n-qubit interaction strength
 
     TwoPointFunctions2 = Compute_TwoPointFunctions(rho2, N_x)   # Two point functions
-    A_rs2 = Compute_A_rs(H2, N_x)                               # Heisenberg amplitudes
-    # Various measures of the interaction size
-    d_ns_Z2 = Compute_d_ns(H2, N_x)
-    d_ns_h2, d_ns_sigsig_avg2 = ComputeAll_d_ns(sparse.csr_matrix(H2), N_x, sX, sY, sZ)
-    d_ns_sigsig2 = Compute_d_ns_sigsig(H2, N_x, sX, sY, sZ)
+    A_r2 = Compute_A_r(H2, N_x)                                 # Heisenberg amplitudes
+    d_n2 = Compute_d_n(H2, N_x, sX, sY, sZ)                     # n-qubit interaction strength
 
 
     # Prints results
@@ -1649,40 +1532,19 @@ if __name__ == '__main__':
     for func in TwoPointFunctions2:
         print(np.real_if_close(func))
 
-    print('\n Amplitudes:')
-    for amp in A_rs:
+    print('\n Heisenberg Amplitudes:')
+    for amp in A_r:
         print(np.real_if_close(amp))
-    print('\n Amplitudes2:')
-    for amp in A_rs2:
+    print('\n Heiseberg Amplitudes2:')
+    for amp in A_r2:
         print(np.real_if_close(amp))
 
-    print('\n Interaction Distances Z (even terms):')
-    for dist in d_ns_Z[0::2]:
-        print(np.real_if_close(dist))
-    print('\n Interaction Distances Z 2 (even terms):')
-    for dist in d_ns_Z2[0::2]:
-        print(np.real_if_close(dist))
-
-    print('\n Interaction Distances h (all):')
-    for dist in d_ns_h:
-        print(np.real_if_close(dist))
-    print('\n Interaction Distances h 2 (all):')
-    for dist in d_ns_h2:
-        print(np.real_if_close(dist))
-
-    print('\n Interaction Distances sigsig (all):')
-    for dist in d_ns_sigsig:
-        print(np.real_if_close(dist))
-    print('\n Interaction Distances sigsig2 (all):')
-    for dist in d_ns_sigsig2:
-        print(np.real_if_close(dist))
-
-    print('\n Interaction Distances sigsig avg (all):')
-    for dist in d_ns_sigsig_avg:
-        print(np.real_if_close(dist))
-    print('\n Interaction Distances sigsig avg 2 (all):')
-    for dist in d_ns_sigsig_avg2:
-        print(np.real_if_close(dist))
+    print('\n n-qubit Interaction Strengths:')
+    for strength in d_n:
+        print(np.real_if_close(strength))
+    print('\n n-qubit Interaction Strengths2:')
+    for strength in d_n2:
+        print(np.real_if_close(strength))
 
 
     # Prints results to text file
@@ -1711,43 +1573,18 @@ if __name__ == '__main__':
         print('\n Two Point Functions2:', file=text_file)
         for func in TwoPointFunctions2:
             print(np.real_if_close(func), file=text_file)
-        print('\n Amplitudes:', file=text_file)
-        for amp in A_rs:
+        print('\n Heisenberg Amplitudes:', file=text_file)
+        for amp in A_r:
             print(np.real_if_close(amp), file=text_file)
-        print('\n Amplitudes2:', file=text_file)
-        for amp in A_rs2:
+        print('\n Heisenberg Amplitudes2:', file=text_file)
+        for amp in A_r2:
             print(np.real_if_close(amp), file=text_file)
-
-        print('\n Interaction Distances Z (all):', file=text_file)
-        for dist in d_ns_Z:
-            print(np.real_if_close(dist), file=text_file)
-        print('\n Interaction Distances Z 2 (all):', file=text_file)
-        for dist in d_ns_Z2:
-            print(np.real_if_close(dist), file=text_file)
-        print('\n Interaction Distances Z (even terms):', file=text_file)
-        for dist in d_ns_Z[0::2]:
-            print(np.real_if_close(dist), file=text_file)
-        print('\n Interaction Distances Z 2 (even terms):', file=text_file)
-        for dist in d_ns_Z2[0::2]:
-            print(np.real_if_close(dist), file=text_file)
-        print('\n Interaction Distances h (all):', file=text_file)
-        for dist in d_ns_h:
-            print(np.real_if_close(dist), file=text_file)
-        print('\n Interaction Distances h 2 (all):', file=text_file)
-        for dist in d_ns_h2:
-            print(np.real_if_close(dist), file=text_file)
-        print('\n Interaction Distances sigsig (all):', file=text_file)
-        for dist in d_ns_sigsig:
-            print(np.real_if_close(dist), file=text_file)
-        print('\n Interaction Distances sigsig2 (all):', file=text_file)
-        for dist in d_ns_sigsig2:
-            print(np.real_if_close(dist), file=text_file)
-        print('\n Interaction Distances sigsig avg (all):', file=text_file)
-        for dist in d_ns_sigsig_avg:
-            print(np.real_if_close(dist), file=text_file)
-        print('\n Interaction Distances sigsig avg 2 (all):', file=text_file)
-        for dist in d_ns_sigsig_avg2:
-            print(np.real_if_close(dist), file=text_file)
+        print('\n n-qubit Interaction Strengths:', file=text_file)
+        for strength in d_n:
+            print(np.real_if_close(strength), file=text_file)
+        print('\n n-qubit Interaction Strengths2:', file=text_file)
+        for strength in d_n2:
+            print(np.real_if_close(strength), file=text_file)
 
     # Prints boundary states to text files
     np.savetxt(str(os.path.basename(__file__) + "_rho.txt"), rho, delimiter='\t')
