@@ -1531,14 +1531,12 @@ if __name__ == '__main__':
     print('\n Two Point Functions2:')
     for func in TwoPointFunctions2:
         print(np.real_if_close(func))
-
     print('\n Heisenberg Amplitudes:')
     for amp in A_r:
         print(np.real_if_close(amp))
     print('\n Heiseberg Amplitudes2:')
     for amp in A_r2:
         print(np.real_if_close(amp))
-
     print('\n n-qubit Interaction Strengths:')
     for strength in d_n:
         print(np.real_if_close(strength))
