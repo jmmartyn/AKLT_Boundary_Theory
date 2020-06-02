@@ -1063,8 +1063,8 @@ def Compute_d_n(H, N_x, sX, sY, sZ):
                     # Uses orthogonality of Pauli operators to determine contribution to h
                     op = ComputeInteraction(np.array(nodes).reshape(strings, 2), N_x, sX, sY, sZ)
                     h = h + op * ((H * op).diagonal()).sum() / (3 ** strings * 2 ** N_x)
-        h = h * N_x       # Interaction can begin at any of the N_x qubits
-        d_n[n, 0] = ((h * h).diagonal()).sum()
+
+        d_n[n, 0] = ((h * h).diagonal()).sum()*N_x       # Interaction can begin at any of the N_x qubits
 
 
     return d_n[:, 0]
@@ -1125,8 +1125,8 @@ def isPD(B):
 if __name__ == '__main__':
     # Parameter specification
     t = time.time()
-    N_x = 8                     # Number of squares in periodic direction, assumed to be even
-    N_y = 8                     # Number of squares in y direction
+    N_x = 6                     # Number of squares in periodic direction, assumed to be even
+    N_y = 6                     # Number of squares in y direction
     N_faces = N_x*N_y           # Total number of squares being considered
     h = 1                       # Height of squares
     w = 1                       # Width of squares
@@ -1137,12 +1137,12 @@ if __name__ == '__main__':
     loop_weight = 3                                                                 # Weight of a closed loop
     gamma = (loop_weight+1)*CP_weight+CR_weight  # Contribution from deg4 vertex if all deg4 configurations are valid
 
-    epsilon = 0.001                 # Maximum admissible error in coefficients
+    epsilon = 0.01                 # Maximum admissible error in coefficients
     samples = 30                    # Maximum number of samples (loop configurations) evaluated
-    epochs = 2                      # Number of epochs (iteration over noncontractible loop rungs)
+    epochs = 1                      # Number of epochs (iteration over noncontractible loop rungs)
     iterations = epochs*(N_y+1)     # Total number of iterations over which coefficients are averaged
     comb_method = 2                 # Method used to construct combinations of face flips that are analyzed
-    range_samples = 50              # Number of samples used to determine n_range
+    range_samples = 30              # Number of samples used to determine n_range
     deg4_samples = 15               # Maximum number of deg4 configs sampled over
     max_strings = int(N_x/2)        # Max number of strings analyzed; an integer >=1 and <= int(N_x/2)
 
@@ -1531,12 +1531,14 @@ if __name__ == '__main__':
     print('\n Two Point Functions2:')
     for func in TwoPointFunctions2:
         print(np.real_if_close(func))
+
     print('\n Heisenberg Amplitudes:')
     for amp in A_r:
         print(np.real_if_close(amp))
     print('\n Heiseberg Amplitudes2:')
     for amp in A_r2:
         print(np.real_if_close(amp))
+
     print('\n n-qubit Interaction Strengths:')
     for strength in d_n:
         print(np.real_if_close(strength))

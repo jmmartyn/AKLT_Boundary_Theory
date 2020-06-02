@@ -194,6 +194,7 @@ def ComputeLoopProperties_Square(N_x, N_y, N_faces, Lattice_Initial, deg2_weight
     rung = np.mod(iteration, N_y + 1) + 1
     loop_numbers = np.zeros(n_high - n_low + 1)
     loop_sizes = np.zeros(n_high - n_low + 1)
+    loop_total_sizes = np.zeros(n_high - n_low + 1)
     Z0_components = np.zeros(n_high - n_low + 1)    # Components of Z with no strings
 
     for n in range(n_low, n_high + 1):
@@ -202,6 +203,7 @@ def ComputeLoopProperties_Square(N_x, N_y, N_faces, Lattice_Initial, deg2_weight
         if n == 0:
             # Contribution from contractible configuration (no faces flipped)
             Z0_components[0] += 1
+            #loop_sizes[0] += 1
 
             # Contribution from noncontractible configuration
             Lattice_nc = AddNCLoop(Lattice_Initial.copy(), N_x, rung)
@@ -212,7 +214,8 @@ def ComputeLoopProperties_Square(N_x, N_y, N_faces, Lattice_Initial, deg2_weight
 
             Z0_components[0] += w
             loop_numbers[0] += loops*w
-            loop_sizes[0] += (edges/loops)*w
+            loop_sizes[0] += edges/loops*w
+            loop_total_sizes[0] += edges*w
         else:
             n_index = n-n_low
 
@@ -255,6 +258,7 @@ def ComputeLoopProperties_Square(N_x, N_y, N_faces, Lattice_Initial, deg2_weight
                         Z0_components[n_index] += w
                         loop_numbers[n_index] += loops*w
                         loop_sizes[n_index] += (edges/loops)*w
+                        loop_total_sizes[n_index] += edges * w
                 else:
                     loops = loops0
                     w = (deg2_weight**deg2)*(loop_weight**loops)
@@ -262,6 +266,7 @@ def ComputeLoopProperties_Square(N_x, N_y, N_faces, Lattice_Initial, deg2_weight
                     Z0_components[n_index] += w
                     loop_numbers[n_index] += loops*w
                     loop_sizes[n_index] += (edges/loops)*w
+                    loop_total_sizes[n_index] += edges * w
 
 
                 # Contribution from noncontractible configuration
@@ -285,6 +290,7 @@ def ComputeLoopProperties_Square(N_x, N_y, N_faces, Lattice_Initial, deg2_weight
                         Z0_components[n_index] += w
                         loop_numbers[n_index] += loops*w
                         loop_sizes[n_index] += (edges/loops)*w
+                        loop_total_sizes[n_index] += edges * w
                 else:
                     loops = loops0
                     w = (deg2_weight**deg2)*(loop_weight**loops)
@@ -292,10 +298,17 @@ def ComputeLoopProperties_Square(N_x, N_y, N_faces, Lattice_Initial, deg2_weight
                     Z0_components[n_index] += w
                     loop_numbers[n_index] += loops*w
                     loop_sizes[n_index] += (edges/loops)*w
-
+                    loop_total_sizes[n_index] += edges * w
+            if (gammaln(N_faces + 1) - gammaln(n + 1) - gammaln(N_faces - n + 1)) > \
+                    np.log(samples):  # equivalent to nchoosek(N_faces, n) > samples
+                Z0_components[n_index] *= 1/samples*np.exp(gammaln(N_faces+1)-gammaln(n+1)-gammaln(N_faces-n+1))
+                loop_numbers[n_index] *= 1/samples*np.exp(gammaln(N_faces+1)-gammaln(n+1)-gammaln(N_faces-n+1))
+                loop_sizes[n_index] *= 1/samples*np.exp(gammaln(N_faces+1)-gammaln(n+1)-gammaln(N_faces-n+1))
+                loop_total_sizes[n_index] *= 1/samples*np.exp(gammaln(N_faces+1)-gammaln(n+1)-gammaln(N_faces-n+1))
     loop_number = sum(loop_numbers)/(sum(Z0_components))
     loop_size = sum(loop_sizes)/(sum(Z0_components))
-    return loop_number, loop_size
+    loop_total_size = sum(loop_total_sizes)/(sum(Z0_components))
+    return loop_number, loop_size, loop_total_size
 
 
 
@@ -303,25 +316,25 @@ def ComputeLoopProperties_Square(N_x, N_y, N_faces, Lattice_Initial, deg2_weight
 if __name__ == '__main__':
     # Parameter specification
     t = time.time()
-    N_x = 10                            # Number of squares in x direction; assumed to be even
-    N_y = 10                            # Number of squares in y direction
+    N_x = 8                             # Number of squares in x direction; assumed to be even
+    N_y = 8                             # Number of squares in y direction
     N_faces = N_x*N_y                   # Total number of squares being considered
     h = 1                               # Height of squares
     w = 1                               # Width of squares
 
     # Sweeps over c_2 and c_4; c_\ell remains fixed
     # Weights of degree 2 vertex
-    deg2_weights = np.array([.1, .2, .3])
+    deg2_weights = np.arange(1e-20, 1.3, 0.1)
     # Weight of crossing
-    CR_weights = np.array([.2])
+    CR_weights = np.arange(1e-20, 1.3, 0.1)
     CP_weights = CR_weights             # Weight of a corner pass
     loop_weight = 3                     # Weight of a closed loop
 
-    epsilon = 0.00                      # Maximum admissible error in coefficients
-    samples = 40                        # Maximum number of samples (loop configurations) evaluated
+    epsilon = 0.001                     # Maximum admissible error in coefficients
+    samples = 250                       # Maximum number of samples (loop configurations) evaluated
     iterations = 32                     # Number of iterations over which coefficients are averaged
     deg4_samples = 20                   # Maximum number of deg4 configs sampled over
-    range_samples = 50                  # Number of samples used to determine n_range
+    range_samples = 150                 # Number of samples used to determine n_range
 
 
     # Initializes lattices; sets the low number of face flips to 0 and high number of face flips to N_faces
@@ -330,6 +343,7 @@ if __name__ == '__main__':
     n_high = N_faces
     loop_numbers = np.zeros([len(deg2_weights), len(CR_weights)])
     loop_sizes = np.zeros([len(deg2_weights), len(CR_weights)])
+    loop_total_sizes = np.zeros([len(deg2_weights), len(CR_weights)])
     Lattice_Initial = Square_Lattice_Bare.copy()
 
     for deg4_index in range(len(CR_weights)):
@@ -420,13 +434,12 @@ if __name__ == '__main__':
 
 
 
-
             # Computes average loop perimeter and number
             def ComputeLoopProperties_Square_parallel(iteration):
                 return ComputeLoopProperties_Square(N_x, N_y, N_faces, Lattice_Initial, deg2_weight, CP_weight,
                     CR_weight, loop_weight, n_low, n_high, samples, deg4_samples, iteration)
             pool = mp.Pool()
-            loop_numbers_iters, loop_sizes_iters = np.transpose(
+            loop_numbers_iters, loop_sizes_iters, loop_total_sizes_iters = np.transpose(
                 pool.map(ComputeLoopProperties_Square_parallel, range(iterations)))
             pool.close()
             pool.join()
@@ -435,8 +448,10 @@ if __name__ == '__main__':
             # Averages loop properties and prints results
             loop_numbers[deg2_index, deg4_index] = np.mean(loop_numbers_iters)
             loop_sizes[deg2_index, deg4_index] = np.mean(loop_sizes_iters)
+            loop_total_sizes[deg2_index, deg4_index] = np.mean(loop_total_sizes_iters)
             print('Average loop number: ' + str(loop_numbers[deg2_index]))
-            print('Average loop size (perimeter): ' + str(loop_sizes[deg2_index]) + '\n \n')
+            print('Average loop size (perimeter): ' + str(loop_sizes[deg2_index]))
+            print('Average total loop size (perimeter): ' + str(loop_total_sizes[deg2_index]) + '\n \n')
 
     # Prints results
     t2 = time.time()
@@ -458,6 +473,10 @@ if __name__ == '__main__':
     for i in range(len(deg2_weights)):
         for j in range(len(CP_weights)):
             print(loop_sizes[i, j])
+    print('\n Average total loop sizes (perimeters): ')
+    for i in range(len(deg2_weights)):
+        for j in range(len(CP_weights)):
+            print(loop_total_sizes[i, j])
 
     # Outputs results to text file
     with open(os.path.basename(__file__) + ".txt", "w") as text_file:
@@ -480,6 +499,9 @@ if __name__ == '__main__':
         print(loop_numbers, file=text_file)
         print('\n Average loop sizes (perimeters): ', file=text_file)
         print(loop_sizes, file=text_file)
+        print('\n Average total loop sizes (perimeters): ', file=text_file)
+        print(loop_total_sizes, file=text_file)
 
     np.savetxt(str(os.path.basename(__file__) + "_LoopNumbers.txt"), loop_numbers, delimiter='\t')
     np.savetxt(str(os.path.basename(__file__) + "_LoopSizes.txt"), loop_sizes, delimiter='\t')
+    np.savetxt(str(os.path.basename(__file__) + "_LoopTotalSizes.txt"), loop_total_sizes, delimiter='\t')
